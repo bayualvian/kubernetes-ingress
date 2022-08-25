@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/golang/glog"
 	"github.com/nginxinc/kubernetes-ingress/internal/configs/version2"
 	conf_v1alpha1 "github.com/nginxinc/kubernetes-ingress/pkg/apis/configuration/v1alpha1"
 )
@@ -16,6 +17,7 @@ type TransportServerEx struct {
 	TransportServer *conf_v1alpha1.TransportServer
 	Endpoints       map[string][]string
 	PodsByIP        map[string]string
+	ExternalNameSvcs map[string]bool
 }
 
 func (tsEx *TransportServerEx) String() string {
@@ -115,6 +117,15 @@ func generateStreamUpstreams(transportServerEx *TransportServerEx, upstreamNamer
 		// subselector is not supported yet in TransportServer upstreams. That's why we pass "nil" here
 		endpointsKey := GenerateEndpointsKey(transportServerEx.TransportServer.Namespace, u.Service, nil, uint16(u.Port))
 		endpoints := transportServerEx.Endpoints[endpointsKey]
+		externalNameSvcKey := GenerateExternalNameSvcKey(transportServerEx.TransportServer.Namespace, u.Service)
+
+		_, isExternalNameSvc := transportServerEx.ExternalNameSvcs[externalNameSvcKey]
+		if isExternalNameSvc && !vsc.isResolverConfigured {
+			msgFmt := "Type ExternalName service %v in upstream %v will be ignored. To use ExternaName services, a resolver must be configured in the ConfigMap"
+			vsc.addWarningf(owner, msgFmt, upstream.Service, upstream.Name)
+			endpoints = []string{}
+		}
+
 
 		ups := generateStreamUpstream(u, upstreamNamer, endpoints, isPlus)
 

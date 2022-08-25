@@ -3142,6 +3142,7 @@ func isMatchingResourceRef(ownerNs, resRef, key string) bool {
 func (lbc *LoadBalancerController) createTransportServerEx(transportServer *conf_v1alpha1.TransportServer, listenerPort int) *configs.TransportServerEx {
 	endpoints := make(map[string][]string)
 	podsByIP := make(map[string]string)
+	externalNameSvcs := make(map[string]bool)
 
 	for _, u := range transportServer.Spec.Upstreams {
 		podEndps, external, err := lbc.getEndpointsForUpstream(transportServer.Namespace, u.Service, uint16(u.Port))
@@ -3149,8 +3150,8 @@ func (lbc *LoadBalancerController) createTransportServerEx(transportServer *conf
 			glog.Warningf("Error getting Endpoints for Upstream %v: %v", u.Name, err)
 		}
 
-		if external {
-			glog.Warningf("ExternalName services are not yet supported in TransportServer upstreams")
+		if err == nil && external && lbc.isNginxPlus {
+			externalNameSvcs[configs.GenerateExternalNameSvcKey(transportServer.Namespace, u.Service)] = true
 		}
 
 		// subselector is not supported yet in TransportServer upstreams. That's why we pass "nil" here
@@ -3171,6 +3172,7 @@ func (lbc *LoadBalancerController) createTransportServerEx(transportServer *conf
 		TransportServer: transportServer,
 		Endpoints:       endpoints,
 		PodsByIP:        podsByIP,
+		ExternalNameSvcs: externalNameSvcs,
 	}
 }
 
