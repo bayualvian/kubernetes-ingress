@@ -1,18 +1,35 @@
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: nginx
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      name: nginx
+  template:
+    metadata:
+      name: nginx
+      labels:
+        name: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx
+          ports:
+            - containerPort: 80
+
+---
+
 apiVersion: v1
 kind: Service
 metadata:
-  name: nginx-ingress
-  namespace: nginx-ingress
+  name: nginx-service
 spec:
-  type: NodePort 
-  ports:
-  - port: 80
-    targetPort: 80
-    protocol: TCP
-    name: http
-  - port: 443
-    targetPort: 443
-    protocol: TCP
-    name: https
+  type: NodePort
   selector:
-    app: nginx-ingress
+    name: nginx
+  ports:
+    - port: 80
+      targetPort: 80
+      nodePort: 30001
